@@ -1,0 +1,80 @@
+#include <iostream>
+#include <chrono>
+#include <thread>
+#include <cstdlib>
+using namespace std;
+
+class Timer {
+private:
+    chrono::time_point<chrono::steady_clock> start_time;
+
+public:
+    void start() {
+        start_time = chrono::steady_clock::now();
+    }
+
+    unsigned long elapsedTime() {
+        auto now = chrono::steady_clock::now();
+        return chrono::duration_cast<chrono::seconds>(now - start_time).count();
+    }
+
+    bool isTimeout(unsigned long seconds) {
+        return elapsedTime() >= seconds;
+    }
+};
+
+int main() {
+    int frames[] = {1, 2, 3, 4};
+    unsigned long seconds = 5;
+    srand(time(NULL));
+    Timer t;
+
+    cout << "Sender has to send frames: ";
+    for (int i = 0; i < 4; i++)
+        cout << frames[i] << " ";
+    cout << endl;
+
+    int count = 0;
+    bool delay = false;
+
+    cout << endl << "Sender\t\t\t\t\tReceiver" << endl;
+
+    do {
+        bool timeout = false;
+        cout << "Sending Frame: " << frames[count] << "\t\t";
+        t.start();
+
+        // Simulate processing delay
+        if (rand() % 2) {
+            this_thread::sleep_for(chrono::milliseconds(100 + rand() % 500)); // Simulated delay
+        }
+
+        if (!t.isTimeout(seconds)) {
+            cout << "Received Frame: " << frames[count];
+            if (delay) {
+                cout << " (Duplicate)";
+                delay = false;
+            }
+            cout << endl;
+            count++;
+        } else {
+            cout << "---" << endl;
+            cout << "Timeout" << endl;
+            timeout = true;
+        }
+
+        t.start();
+        if (rand() % 2 || !timeout) {
+            this_thread::sleep_for(chrono::milliseconds(500 + rand() % 1000)); // Simulated ACK delay
+            if (t.isTimeout(seconds)) {
+                cout << "Delayed Ack" << endl;
+                count--;
+                delay = true;
+            } else if (!timeout) {
+                cout << "Acknowledgement: " << frames[count] - 1 << endl;
+            }
+        }
+    } while (count != 4);
+
+    return 0;
+}
